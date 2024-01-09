@@ -8,7 +8,7 @@ import lombok.NoArgsConstructor;
 @Data
 @AllArgsConstructor
 
-public class Tienda {
+public class TiendaC {
     private int id;
     private String nombre;
     private double ventas ;
