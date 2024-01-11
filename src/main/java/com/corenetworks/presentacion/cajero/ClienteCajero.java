@@ -1,6 +1,7 @@
 package com.corenetworks.presentacion.cajero;
 
 import com.corenetworks.modelo.CuentaBancaria;
+import com.corenetworks.persistencia.AccesoCuentaBancaria;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -8,32 +9,73 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.sql.SQLException;
 import java.util.Scanner;
 
 public class ClienteCajero {
+    private static Scanner teclado = new Scanner(System.in);
+    private static String cuenta;
     public static void main(String[] args) {
 
-        CuentaBancaria cB1 = solicitarDatos();
-        System.out.println(cB1.toString());
-        try (Socket cliente = new Socket("localhost", 3000)) {
-            PrintWriter mensajeEnviar =new PrintWriter(cliente.getOutputStream(),true);
-            mensajeEnviar.println(cB1.getTipoOperacion()+","+cB1.getId()+","+cB1.getCantidad());
-            System.out.println("Esperando respuesta del servidor -> ");
-            BufferedReader mensajeRecibido=new BufferedReader(new InputStreamReader(cliente.getInputStream()));
-            System.out.println(mensajeRecibido.readLine());
 
+        try {
+            if (solicitarPIN()) {
+                while (true) {
 
-        } catch (UnknownHostException e) {
+                    CuentaBancaria cB1 = solicitarDatos();
+
+                    if (cB1.getTipoOperacion() == null) {
+                        break;
+                    }
+                    System.out.println(cB1.toString());
+                    try (Socket cliente = new Socket("localhost", 3000)) {
+                        PrintWriter mensajeEnviar = new PrintWriter(cliente.getOutputStream(), true);
+                        mensajeEnviar.println(cB1.getTipoOperacion() + "," + cB1.getId() + "," + cB1.getCantidad());
+                        System.out.println("Esperando respuesta del servidor -> ");
+                        BufferedReader mensajeRecibido = new BufferedReader(new InputStreamReader(cliente.getInputStream()));
+                        System.out.println(mensajeRecibido.readLine());
+
+                    } catch (UnknownHostException e) {
+                        System.out.println(e.toString());
+                    } catch (IOException e) {
+                        System.out.println(e.toString());
+                    }
+                }
+            }
+        } catch (SQLException e) {
             System.out.println(e.toString());
-        } catch (IOException e) {
+        } catch (ClassNotFoundException e) {
             System.out.println(e.toString());
         }
     }
 
+    private static boolean solicitarPIN() throws SQLException, ClassNotFoundException {
+        int contador = 0;
+
+        String pin = null;
+        AccesoCuentaBancaria aCB1 =new AccesoCuentaBancaria();
+        System.out.printf("Escribir la cuenta ->");
+        cuenta=teclado.nextLine();
+        while (true) {
+            System.out.println("Escriba el PIN");
+            pin = teclado.nextLine();
+            if (pin.equals(aCB1.obtenerPin(cuenta))) {
+                return true;
+
+
+            } else {
+                System.out.println("PIN INCORRECTO");
+                contador++;
+                if (contador == 3) {
+                    System.out.println("Recoja tu tarjeta en el banco");
+                    return false;
+                }
+            }
+        }
+    }
     private static CuentaBancaria solicitarDatos() {
         CuentaBancaria cB1 = new CuentaBancaria();
         int tipoOperacion = 0;
-        Scanner teclado = new Scanner(System.in);
 
 
 
@@ -46,20 +88,20 @@ public class ClienteCajero {
             System.out.printf("%s %n", "4) Salir");
             System.out.printf("Escriba la opcion ->");
             tipoOperacion = teclado.nextInt();
-//            if (tipoOperacion==4 ){
-//                break;
-//            }
-            teclado.nextLine();
-            System.out.printf("Escribir la cuenta ->");
-            cB1.setId(teclado.next());
+            if (tipoOperacion == 4) {
+                return cB1;
+            }
+            cB1.setId(cuenta);
+
             if (tipoOperacion == 2 || tipoOperacion == 3) {
                 System.out.printf("escribir la cantidad ->");
                 cB1.setCantidad(teclado.nextDouble());
             }
             cB1.setTipoOperacion(Integer.toString(tipoOperacion));
+            return cB1;
+
+        }
+        }
 
 
 
-        return cB1;
-    }
-}
